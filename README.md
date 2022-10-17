@@ -1,5 +1,25 @@
 # start
 
+
+## Setting Up the project
+
+Install required libraries by running
+
+```
+npm install
+
+or
+
+yarn install
+```
+
+Start the application by running
+```
+node app
+```
+
+Go to http://localhost:3000
+
 ### Web server settings
 - To use NXCLOUD SDK, you must have your own web server and must use https to access.
 - The web server should deploy the audio directory, containing 5 files:
@@ -47,7 +67,7 @@ let profile = {
  - **nxuser and nxpass are NXCLOUD's assigned webcall accounts, not NXCLOUD's user accounts. **
  - audioElementId and playElementId are the ids of the audio component of the page
  - If you playTone, please refer to the tone <a href='#audiolist'>list</a>.
- 
+
 
 #### 3. Write the callback function
 ````js

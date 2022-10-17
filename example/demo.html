@@ -3,53 +3,64 @@
 
 <head>
   <meta charset="utf-8" />
-  <title>NXWPHONE</title>
+  <title>NXWPHONE Demo</title>
+  <script src="/lib/nxwebrtc.js">  </script>
+  <script src="/lib/vue/dist/vue.global.prod.js">  </script>
 </head>
 
 <body>
-  <h1>NXWPHONE</h1>
-  <table>
-    <tr>
-      <td> Username</td>
-      <td>
-        <input type="text" id="nxuser" placeholder="webcall account" value="" />
-      </td>
-    </tr>
-    <tr>
-      <td>Password</td>
-      <td>
-        <input type="password" id="nxpass" placeholder="webcall password" value="" />
-      </td>
-    </tr>
+  <h1>NXWPHONE Demo</h1>
 
-    <tr>
-      <td>Destination Number</td>
-      <td>
-        <input type="text" id="number" placeholder="4444" value="" />
-      </td>
-    </tr>
+  <div id="app">
+    <h2>App</h2>
+    <br />
+    <p>Current Connection Status: {{ connectionStatus }}</p>
 
-    <tr>
-      <td>Example OrderId</td>
-      <td>
-        <input type="text" id="orderId" placeholder="oid-1234" value="" /> [custom info for this call]
-      </td>
-    </tr>
-  </table>
+    <!-- login form -->
+    <table>
+      <tr>
+        <td>Username</td>
+        <td>
+          <input type="text" id="nxuser" placeholder="webcall account" value="" v-model="username" />
+        </td>
+      </tr>
+      <tr>
+        <td>Password</td>
+        <td>
+          <input type="password" id="nxpass" placeholder="webcall password" value="" v-model="password" />
+        </td>
+      </tr>
 
-  <br />
-  <button id="connect">Connect</button>
-  <button id="call">Call</button>
-  <button id="answer">Answer</button>
-  <button id="hangup">Hangup</button>
+      <tr>
+        <td>Destination Number</td>
+        <td>
+          <input type="text" id="number" placeholder="4444" value="" v-model="phoneNumber" />
+        </td>
+      </tr>
+
+      <tr>
+        <td>Example OrderId</td>
+        <td>
+          <input type="text" id="orderId" placeholder="oid-1234" value="" v-model="orderId" /> [custom info for this call]
+        </td>
+      </tr>
+    </table>
+
+    <button id="connect" @click="connect" :disabled="connectionStatus == 'connected'">Connect</button>
+    <button id="disconnect" @click="disconnect" :disabled="connectionStatus == 'disconnected'">Disconnect</button>
+    <br />
+    <button id="call" @click="call" :disabled="connectionStatus == 'disconnected'">Call</button>
+    <button id="answer" @click="answer" :disabled="connectionStatus == 'disconnected'">Answer</button>
+    <button id="hangup" @click="hangup" :disabled="connectionStatus == 'disconnected'">Hangup</button>
+    <br />
+    <p style="color: red;">{{errorMessages}}</p>
+    <textarea style="width: 600px; min-height: 300px;" v-model="logs"></textarea>
+  </div>
 
   <audio style="display: none" id="remoteAudio" controls> </audio>
   <audio style="display: none" id="playAudio" controls> </audio>
 
- 
-  <script src="../lib/nxwebrtc.js">  </script>
   <script>
-
     let NxwCall = NXW.default;
     let nxwcall = null;
     let currentUser = null;
@@ -136,39 +147,158 @@
 
     // Add click listener to call button
     // console.log("button=", NXW.getButton('connect'))
-    NXW.getButton('connect').addEventListener("click", () => {
+    // NXW.getButton('connect').addEventListener("click", () => {
+    //   console.log("click call Button nxwcall=", nxwcall)
+    //   initApp();
+    // });
 
-      console.log("click call Button nxwcall=", nxwcall)
-      initApp();
-    });
-    NXW.getButton('call').addEventListener("click", () => {
+    // NXW.getButton('call').addEventListener("click", () => {
+    //   if (nxwcall) {
+    //     //get the target number
+    //     let target = NXW.getInput("number").value;
+    //     console.log("ready call target ", target);
+    //     //put the custom orderId
+    //     nxwcall.myOrderId = NXW.getInput("orderId").value;
+    //     //make outgoing call
+    //     nxwcall.placeCall(target);
+    //   }
+    // });
 
+    // NXW.getButton('hangup').addEventListener("click", () => {
+    //   if (nxwcall != null) {
+    //     console.log("hangup call");
+    //     nxwcall.hangupCall()
+    //   }
+    // });
+
+    // NXW.getButton('answer').addEventListener("click", () => {
+    //   if (nxwcall != null) {
+    //     //optional: get orderid from incoming call and return back
+    //     //nxwcall.myOrderId = nxwcall.comingOrderId;
+    //     console.log("answer call");
+    //     nxwcall.answerCall();
+    //   }
+    // });
+
+
+
+    function initConnection(username, password) {
+      let profile = {
+        nxuser: username,
+        nxpass: password,
+        logLevel: "error",
+        retries: 0,
+        playTone: 0xFF,
+        nxtype: 6,
+        audioElementId: "remoteAudio",
+        playElementId: "playAudio",
+      };
+      console.log("profile=", profile, "nxwcall=", nxwcall)
+      //restart nxwcall when nxuser changed
+      if (currentUser != profile.nxuser) {
+        if (nxwcall) {
+          removeConnection()
+          console.log("change profile=", profile)
+
+        }
+        currentUser = profile.nxuser;
+      }
+      //create object (initialize connection)
+      if (nxwcall == null) {
+        nxwcall = new NxwCall(profile)
+        setupEvents(nxwcall);
+        console.log("initApp done nxuser=" + profile.nxuser)
+      }
+    }
+
+    function removeConnection() {
       if (nxwcall) {
-        //get the target number
-        let target = NXW.getInput("number").value;
-        console.log("ready call target ", target);
-        //put the custom orderId
-        nxwcall.myOrderId = NXW.getInput("orderId").value;
-        //make outgoing call
-        nxwcall.placeCall(target);
+        console.log("diconnected profile=", nxwcall.nxuser)
+        nxwcall.disconnect();
+        delete nxwcall;
+        nxwcall = null;
       }
-    });
+    }
 
-    NXW.getButton('hangup').addEventListener("click", () => {
-      if (nxwcall != null) {
-        console.log("hangup call");
-        nxwcall.hangupCall()
-      }
-    });
+    /*******
+     * Vue *
+     *******/
+    const STATUS_DISCONNECTED = 'disconnected'
+    const STATUS_CONNECTED = 'connected'
+    let app = Vue.createApp({
+      data() {
+        return {
+          connectionStatus: STATUS_DISCONNECTED,
+          username: '',
+          password: '',
+          phoneNumber: '',
+          errorMessages: '',
+          orderId: '',
+          logs: '',
+        }
+      },
+      methods: {
+        answer(event) {
+          if (nxwcall) {
+            nxwcall.answerCall()
+          }
+          this.addLogs('Answered call: ', phoneNumber)
+        },
+        call(event) {
+          this.errorMessages = ''
 
-    NXW.getButton('answer').addEventListener("click", () => {      
-      if (nxwcall != null) {
-        //optional: get orderid from incoming call and return back
-        //nxwcall.myOrderId = nxwcall.comingOrderId;
-        console.log("answer call");
-        nxwcall.answerCall();
+          let phoneNumber = this.phoneNumber
+          if (phoneNumber == '') {
+            console.log('Please insert phone number')
+            this.errorMessages = 'Please insert phone number'
+          }
+
+          if (this.orderId) {
+            nxwcall.myOrderId = this.orderId
+          } else {
+            nxwcall.myOrderId = null
+          }
+
+          if (!nxwcall) {
+            this.errorMessages = 'Unable to make phone call as connection to nxcloud is not established'
+          }
+
+          console.log('Calling phone number: ', phoneNumber)
+          nxwcall.placeCall(phoneNumber)
+          this.addLogs('Calling phone number: ', phoneNumber)
+        },
+        hangup(event) {
+          if (nxwcall) {
+            nxwcall.hangupCall()
+          }
+          this.addLogs('Hangup call')
+        },
+        connect(event) {
+          let username = this.username
+          let password = this.password
+          if (this.username == '' || this.password == '') {
+            console.log('Please insert username and password')
+            this.errorMessages = 'Please insert username and password'
+            return;
+          }
+
+          initConnection(this.username, this.password)
+          this.connectionStatus = STATUS_CONNECTED
+          this.addLogs('Connected to NXCloud')
+        },
+        disconnect(event) {
+          removeConnection()
+          this.connectionStatus = STATUS_DISCONNECTED
+          this.addLogs('Disconnected from NXCloud')
+        },
+
+        // non-call related functions
+        addLogs(message) {
+          let timestamp = (new Date()).toISOString()
+          this.logs =  `[${timestamp}] ${message}\n` + this.logs
+        }
       }
-    });
+    }).mount('#app')
 
   </script>
 </body>
